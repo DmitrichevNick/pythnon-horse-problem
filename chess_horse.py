@@ -1,3 +1,9 @@
+import curses
+
+STDSCR = curses.initscr()
+curses.noecho()
+curses.cbreak()
+
 class HorseStep:
     row = None
     col = None
@@ -46,29 +52,78 @@ class HorseBoard:
             if step.row >= 0 and step.row < self._board_size and step.col >= 0 and step.col < self._board_size and step not in self.steps:
                 next_steps.append(step)
         return next_steps
+    
+    def print_plain(self):
+        row_delimeter = f"+{'---+'*self._board_size}"
+        print(row_delimeter)
+        for row in range(self._board_size):
+            row_str = "|"
+            for col in range(self._board_size):
+                cell_step = HorseStep(row, col)
+                cell_value = " "
+                if self.steps.count(cell_step):
+                    cell_value = self.steps.index(cell_step)
+                row_str += f"{cell_value:>2} |"
+            row_str += f" {row}"
+            print(row_str)
+            print(row_delimeter)
+        print(f" {'  '.join([f'{i:>2}' for i in range(self._board_size)])}")
+
+    def print_reprint(self):
+        row_out = 0
+
+        def addstr(row_str):
+            nonlocal row_out
+            STDSCR.addstr(row_out, 0, row_str)
+            row_out += 1
+
+        row_delimeter = f"+{'---+'*self._board_size}"
+        addstr(row_delimeter)
+        for row in range(self._board_size):
+            row_str = "|"
+            for col in range(self._board_size):
+                cell_step = HorseStep(row, col)
+                cell_value = " "
+                if self.steps.count(cell_step):
+                    cell_value = self.steps.index(cell_step)
+                row_str += f"{cell_value:>2} |"
+            row_str += f" {row}"
+            addstr(row_str)
+            addstr(row_delimeter)
+        addstr(f" {'  '.join([f'{i:>2}' for i in range(self._board_size)])}")
+        addstr(f"Boards in progress: {len(boards_in_progress):>5}")
+        STDSCR.refresh()
+
 
 boards_in_progress = [HorseBoard([])]
-finished_boards = []
+best_board = HorseBoard([])
 print("Start calculating")
-while len(boards_in_progress) != 0:
-    board = boards_in_progress.pop(0)
+while len(boards_in_progress) > 0:
+    board = boards_in_progress.pop()
+    board.print_reprint()
     next_steps = board.get_next_steps()
     if not next_steps:
-        finished_boards.append(board)
-    else:
-        for step in next_steps:
-            boards_in_progress.append(HorseBoard([*board.steps, step]))
+        if len(board) >= len(best_board):
+            best_board = board
+            board.print_reprint()
+        if len(board) == HorseBoard._board_size **2:
+            break
+        continue
+
+    for step in next_steps:
+        boards_in_progress.append(HorseBoard([*board.steps, step]))
+
+    # time.sleep(0.005)
+curses.echo()
+curses.nocbreak()
+curses.endwin()
+
 print("Finished calculating")
-print(f"Finished boards: {len(finished_boards)}")
-max_len_steps = 0
-max_len_board = None
-for board in finished_boards:
-    if len(board) > max_len_steps:
-        max_len_steps = len(board)
-        max_len_board = board
-print(f"MAX len steps: {max_len_steps}")
-print(f"Steps: {max_len_board.steps}")
-    
+if len(best_board) == HorseBoard._board_size **2:
+    print("SOLVED!")
+print(f"Board with maximal steps ({len(best_board)}):")
+best_board.print_plain()
+
 
 
 class HorseGame:
